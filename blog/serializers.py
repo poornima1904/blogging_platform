@@ -2,6 +2,9 @@ from rest_framework import serializers
 from .models import User, Article, Comment, FeatureFlag
 
 class UserSerializer(serializers.ModelSerializer):
+    # Explicitly specify role in serializer (can be optional on create)
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, default='Member')
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'role']

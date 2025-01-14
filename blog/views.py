@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import User, Article, Comment, FeatureFlag
@@ -11,6 +12,26 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsOwner]
+
+    def create(self, request, *args, **kwargs):
+        # If no users exist, create the first user with the "Owner" role
+        if not User.objects.exists():
+            request.data['role'] = 'Owner'
+        else:
+            # If the user is not the first one, use the role from the request data
+            role = request.data.get('role', 'Member')
+            request.data['role'] = role
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        token, created = Token.objects.get_or_create(user=user)
+
+        return Response({
+            'user': serializer.data,
+            'token': token.key
+        }, status=status.HTTP_201_CREATED)
 
 class ArticleViewSet(viewsets.ModelViewSet):
     queryset = Article.objects.all()
