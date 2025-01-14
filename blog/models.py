@@ -14,8 +14,6 @@ class Article(models.Model):
     content = models.TextField()
     tags = models.CharField(max_length=255, blank=True, null=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
-    views = models.PositiveIntegerField(default=0)
-    impressions = models.PositiveIntegerField(default=0)
 
 class Comment(models.Model):
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='comments')

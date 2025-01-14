@@ -4,14 +4,14 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import User, Article, Comment, FeatureFlag
 from .serializers import UserSerializer, ArticleSerializer, CommentSerializer, FeatureFlagSerializer
-from .permissions import IsOwner, IsAdminOrOwner, IsMemberOrHigher
+from .permissions import IsOwner, IsOwnerOrAdmin, CreateUserPermission, CommentPermissionClass
 from django.conf import settings
 import requests
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsOwner]
+    permission_classes = [CreateUserPermission]
 
     def create(self, request, *args, **kwargs):
         # If no users exist, create the first user with the "Owner" role
@@ -36,7 +36,7 @@ class UserViewSet(viewsets.ModelViewSet):
 class ArticleViewSet(viewsets.ModelViewSet):
     queryset = Article.objects.all()
     serializer_class = ArticleSerializer
-    permission_classes = [IsMemberOrHigher]
+    permission_classes = [IsOwnerOrAdmin]
 
     @action(detail=False, methods=['post'], url_path='generate-content')
     def generate_content(self, request):
@@ -92,7 +92,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsMemberOrHigher]
+    permission_classes = [CommentPermissionClass]
 
 class FeatureFlagViewSet(viewsets.ModelViewSet):
     queryset = FeatureFlag.objects.all()
