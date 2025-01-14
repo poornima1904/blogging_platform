@@ -6,6 +6,7 @@ from .models import User, Article, Comment, FeatureFlag
 from .serializers import UserSerializer, ArticleSerializer, CommentSerializer, FeatureFlagSerializer
 from .permissions import IsOwner, IsOwnerOrAdmin, CreateUserPermission, CommentPermissionClass
 from django.conf import settings
+from .service import *
 import requests
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -38,56 +39,59 @@ class ArticleViewSet(viewsets.ModelViewSet):
     serializer_class = ArticleSerializer
     permission_classes = [IsOwnerOrAdmin]
 
-    @action(detail=False, methods=['post'], url_path='generate-content')
-    def generate_content(self, request):
-        # Only allow Admins or Owners to generate content
-        if not request.user.role in ['Admin', 'Owner']:
-            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
 
-        feature_flag = FeatureFlag.objects.filter(name='LLM Article Generation').first()
-        if feature_flag and not feature_flag.is_enabled:
-            return Response({"error": "LLM Article Generation is disabled"}, status=status.HTTP_403_FORBIDDEN)
+    def perform_create(self, serializer):
+        """
+        check if feature flags are enabled for LLM Article Content & Tag generation.
+        If enabled, use the LLM to generate content and tags; otherwise, honor the request data.
+        """
 
-        title = request.data.get('title', '')
+        request_data = self.request.data.copy()
+        title = request_data.get('title', '')
         if not title:
             return Response({"error": "Title is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # LLM API call (OpenAI example)
-        response = requests.post(
-            'https://api.openai.com/v1/completions',
-            headers={'Authorization': f'Bearer {settings.OPENAI_API_KEY}'},
-            json={
-                'model': 'gpt-3.5-turbo',
-                'prompt': f"Write a detailed blog post about: {title}",
-                'max_tokens': 500
-            }
-        )
+        # Get feature flags
+        llm_article_flag = FeatureFlag.objects.filter(name='LLM Article Generation', is_enabled=True).exists()
+        llm_tags_flag = FeatureFlag.objects.filter(name='LLM Tags Generation', is_enabled=True).exists()
 
-        if response.status_code != 200:
-            return Response({"error": "Failed to generate content from LLM"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Check if LLM Article Generation flag is enabled
+        if llm_article_flag:
+            # Call a function to generate the article content using an LLM service
+            generated_content = generate_article_content(title)  # Function to generate content via LLM
+            request_data['content'] = generated_content
 
-        data = response.json()
-        content = data.get('choices', [{}])[0].get('text', '').strip()
-        return Response({"title": title, "content": content}, status=status.HTTP_200_OK)
+        # Check if LLM Tags Generation flag is enabled
+        if llm_tags_flag:
+            # Call a function to generate tags using an LLM service
+            generated_tags = generate_tags(title)  # Function to generate tags via LLM
+            request_data['tags'] = generated_tags
+        else:
+            # If LLM Tag Generation is not enabled, use the tags provided in the request
+            tags = request_data.get('tags', '')
+            request_data['tags'] = tags  # Ensure that 'tags' are used from the request
 
-    def perform_create(self, serializer):
-        instance = serializer.save()
-        feature_flag = FeatureFlag.objects.filter(name='LLM Tags Generation').first()
-        if feature_flag and feature_flag.is_enabled:
-            response = requests.post(
-                'https://api.openai.com/v1/completions',
-                headers={'Authorization': f'Bearer {settings.OPENAI_API_KEY}'},
-                json={
-                    'model': 'gpt-3.5-turbo',
-                    'prompt': f"Suggest tags for this article: {instance.title}\n\nContent: {instance.content}",
-                    'max_tokens': 50
-                }
-            )
-            if response.status_code == 200:
-                data = response.json()
-                tags = data.get('choices', [{}])[0].get('text', '').strip()
-                instance.tags = tags
-                instance.save()
+        # Save the article with the potentially generated content and tags
+        request_data.pop('author')
+        serializer.save(author=self.request.user, **request_data)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Override the create method to handle the dynamic content and tag generation.
+        """
+        # Get the serializer instance to validate and save data
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Perform the create operation (which will handle content and tag generation)
+        self.perform_create(serializer)
+        
+        # Return the response with the article data and status
+        return Response({
+            'article': ArticleSerializer(instance=serializer.instance).data
+        }, status=status.HTTP_201_CREATED)
+
+        
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
