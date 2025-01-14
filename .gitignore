@@ -1,0 +1,25 @@
+# Python-related files
+*.pyc
+*.pyo
+__pycache__/
+*.sqlite3
+
+# Virtual environment
+venv/
+env/
+
+# Django-specific
+db.sqlite3
+media/
+staticfiles/
+
+# Docker-related
+*.env
+*.log
+*.pid
+*.sock
+__MACOSX
+
+# Ignore PyCharm, VSCode, and other IDE-specific files
+.idea/
+.vscode/
