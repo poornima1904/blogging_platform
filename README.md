@@ -90,7 +90,6 @@ This project is a Django-based backend API developed using the Django Rest Frame
    ```
 
 3. Access the application:
-   - API: `http://localhost:8000`
    - Admin Panel: `http://localhost:8000/admin`
 
 4. Run migrations:
@@ -98,18 +97,12 @@ This project is a Django-based backend API developed using the Django Rest Frame
    docker exec -it <container_name> python manage.py migrate
    ```
 
-5. Create a superuser:
-   ```bash
-   docker exec -it <container_name> python manage.py createsuperuser
-   ```
-
 ---
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login/`: User login.
-- `POST /api/auth/register/`: User registration.
+- `POST //api/users//`: Owner/User Signup/Login.
 
 ### Articles
 - `GET /api/articles/`: List all articles.
@@ -118,12 +111,13 @@ This project is a Django-based backend API developed using the Django Rest Frame
 - `DELETE /api/articles/<id>/`: Delete an article (Admin only).
 
 ### Comments
-- `GET /api/articles/<id>/comments/`: List comments on an article.
-- `POST /api/articles/<id>/comments/`: Add a comment to an article.
+- `GET /api/comments/`: List comments on an article.
+- `POST /api/comments/`: Add a comment to an article.
 
 ### Feature Flags
-- `GET /api/feature-flags/`: View feature flag status (Owner only).
 - `POST /api/feature-flags/`: Update feature flag status (Owner only).
+- `GET /api/feature-flags/`: View feature flag status (Owner only).
+- `PATCH /api/feature-flags/`: Update feature flag status (Owner only).
 
 
 ---
